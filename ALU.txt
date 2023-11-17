@@ -1,51 +1,50 @@
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
-
-
-entity MOD25counter is
-    Port ( rst : in  STD_LOGIC;
-           pr : in  STD_LOGIC;
-           clk : in  STD_LOGIC;
-           dir : in  STD_LOGIC;
-           Q : out  STD_LOGIC_VECTOR (4 downto 0));
-end MOD25counter;
-
-architecture Behavioral of MOD25counter is
-signal Qtemp : STD_LOGIC_VECTOR (4 downto 0) := "00000";
+use IEEE.NUMERIC_STD.ALL;
+entity ALU_4bit is
+Port ( A : in STD_LOGIC_VECTOR (3 downto 0);
+B : in STD_LOGIC_VECTOR (3 downto 0);
+F : in STD_LOGIC_VECTOR (2 downto 0);
+Y : out STD_LOGIC_VECTOR (3 downto 0);
+C_B : out STD_LOGIC
+);
+end ALU_4bit;
+architecture ALU_4bit_arch of ALU_4bit is
+signal result:STD_LOGIC_VECTOR(4 downto 0):="00000";
 begin
-process(rst,pr,clk,dir)
+process(A,B,F)
 begin
-if rst ='1' then
-Qtemp <= (OTHERS =>'0');
-elsif pr='1' then
-Qtemp <= (OTHERS =>'1');
-elsif falling_edge(clk) then
-if dir = '1' then
-
-if Qtemp < 24 then
-Qtemp <= Qtemp + 1;
+CASE F IS
+when "000" =>
+result <= '0' & (A AND B);
+when "001" =>
+result <= '0' & (A NAND B);
+when "010" =>
+result <= '0' & (A OR B);
+when "011" =>
+result <= '0' & (A XOR B);
+when "100" =>
+result <= '0' & (A XNOR B);
+when "101" =>
+result <= '0' & (A NOR B);
+when "110" =>
+result <= ('0' & A)+('0' & B);
+when others =>
+if A < B then
+result <= '0' & (NOT B);
+result <= result+1;
+result <= ('0' & A) + result;
+result <= (NOT result) +1;
+result <= (NOT(('0' & A) + ('0' &(NOT B)) + 1))+1;
 else
-Qtemp <= "00000";
-end if;
-
-else
-
-if Qtemp > 7 then
-Qtemp <= Qtemp - 1;
-else
-Qtemp <= "11111";
-end if;
-
-end if;
-end if;
+result <=('0' & A)-('0' & B);
+end if ;
+end CASE;
 end process;
-Q<=Qtemp;
-
-end Behavioral;
-
-
+Y <= result(3 downto 0);
+C_B <= result(4);
+end ALU_4bit_arch;
 
 ////////////////////////////////////
 
@@ -55,88 +54,46 @@ test bench
 
 /////////////////////////////////////
 
-
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
- 
+USE ieee.std_logic_unsigned.ALL;
+ENTITY ALU_4bit_tb IS
+END ALU_4bit_tb;
+ARCHITECTURE behavior OF ALU_4bit_tb IS
+-- Component Declaration for the Unit Under Test (UUT)
+COMPONENT ALU_4bit
+PORT(
+A : IN std_logic_vector(3 downto 0);
+B : IN std_logic_vector(3 downto 0);
+F : IN std_logic_vector(2 downto 0);
+Y : OUT std_logic_vector(3 downto 0);
+C_B : OUT std_logic
 
-ENTITY MOD25counter_tb IS
-END MOD25counter_tb;
- 
-ARCHITECTURE behavior OF MOD25counter_tb IS 
- 
-    -- Component Declaration for the Unit Under Test (UUT)
- 
-    COMPONENT MOD25counter
-    PORT(
-         rst : IN  std_logic;
-         pr : IN  std_logic;
-         clk : IN  std_logic;
-         dir : IN  std_logic;
-         Q : OUT  std_logic_vector(4 downto 0)
-        );
-    END COMPONENT;
-    
+);
+END COMPONENT;
+--Inputs
+signal A : std_logic_vector(3 downto 0) := "0010";
+signal B : std_logic_vector(3 downto 0) := "1111";
+signal F : std_logic_vector(2 downto 0) := (others => '1');
+--Outputs
+signal Y : std_logic_vector(3 downto 0);
+signal C_B : std_logic;
+-- No clocks detected in port list. Replace <clock> below with
+-- appropriate port name
 
-   --Inputs
-   signal rst : std_logic := '0';
-   signal pr : std_logic := '0';
-   signal clk : std_logic := '0';
-   signal dir : std_logic := '0';
-
- 	--Outputs
-   signal Q : std_logic_vector(4 downto 0);
-
-   -- Clock period definitions
-   constant clk_period : time := 10 ns;
- 
 BEGIN
- 
-	-- Instantiate the Unit Under Test (UUT)
-   uut: MOD25counter PORT MAP (
-          rst => rst,
-          pr => pr,
-          clk => clk,
-          dir => dir,
-          Q => Q
-        );
-
-   -- Clock process definitions
-   clk_process :process
-   begin
-		clk <= '0';
-		wait for clk_period/2;
-		clk <= '1';
-		wait for clk_period/2;
-   end process;
- 
-
-   -- Stimulus process
-   stim_proc: process
+-- Instantiate the Unit Under Test (UUT)
+uut: ALU_4bit PORT MAP (
+A => A,
+B => B,
+F => F,
+Y => Y,
+C_B => C_B
+);
+-- Stimulus process
+stim_proc_F: process
 begin
-
-dir <= not(dir);
-wait for 320 ns;
+F <= F + 1;
+wait for 25 ns;
 end process;
-stim_proc_rst: process
-begin
-wait for 680 ns;
-rst <= '1';
-wait for 40 ns;
-rst <= '0';
-wait;
-end process;  
-stim_proc_pr: process
-begin
-wait for 750 ns;
-pr <= '1';
-wait for 40 ns;
-pr <= '0';
-wait;
-end process;
-
 END;
-
-
-
-
